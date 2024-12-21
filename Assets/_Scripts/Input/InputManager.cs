@@ -19,6 +19,8 @@ public class InputManager : Singleton<InputManager>
         inputs.Enable();
         inputs.Movement.Move.performed += controller.OnMove;
         inputs.Movement.Move.canceled += controller.MoveCancelled;
+
+        inputs.Movement.Jump.performed += controller.OnJump;
     }
 
     private void OnDisable()
@@ -26,6 +28,8 @@ public class InputManager : Singleton<InputManager>
         inputs.Disable();
         inputs.Movement.Move.performed -= controller.OnMove;
         inputs.Movement.Move.canceled -= controller.MoveCancelled;
+
+        inputs.Movement.Jump.performed -= controller.OnJump;
     }
 
     // Start is called before the first frame update
