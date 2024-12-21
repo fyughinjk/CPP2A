@@ -1,24 +1,44 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
 
-    Rigidbody rb;
+    CharacterController cc;
+    float speed = 5.0f;
+
+    //cc Variables
+    Vector2 direction;
+    float gravity;
 
     // Start is called before the first frame update
     void Start()
     {
-        rb = GetComponent<Rigidbody>();
+        cc = GetComponent<CharacterController>();
+        gravity = Physics.gravity.y;
+    }
+
+
+    public void OnMove(InputAction.CallbackContext ctx)
+    {
+        direction = ctx.ReadValue<Vector2>();
+    }
+
+    public void MoveCancelled(InputAction.CallbackContext ctx)
+    {
+        direction = Vector2.zero;
     }
 
     // Update is called once per frame
     void Update()
     {
-        float hInput = Input.GetAxis("Horizontal");
-        float vInput = Input.GetAxis("Vertical");
+        Vector3 desiredMoveDirection;
+        float YVel = (!cc.isGrounded) ? gravity * Time.deltaTime : 0f;
 
-        rb.velocity = new Vector3 (hInput, rb.velocity.y, vInput);
+        desiredMoveDirection = new Vector3(direction.x * speed * Time.deltaTime, YVel, direction.y * speed * Time.deltaTime);
+        cc.Move(desiredMoveDirection);
     }
 }
