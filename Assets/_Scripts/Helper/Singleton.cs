@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,13 +13,23 @@ public abstract class Singleton<T> : MonoBehaviour where T : Component
 
         get
         {
-            instance =FindAnyObjectByType<T>();
-            if (instance == null)
+            try
             {
+                instance = FindAnyObjectByType<T>();
+                if (instance == null) throw new NullReferenceException();
+            }
+            catch (NullReferenceException e)
+            {
+                Debug.Log(e.Message);
                 GameObject obj = new GameObject();
                 obj.name = typeof(T).Name;
                 instance = obj.AddComponent<T>();
                 DontDestroyOnLoad(obj);
+            }
+            finally
+            {
+                //This code will always run
+                Debug.Log("Code always runs");
             }
 
             return instance;
