@@ -31,6 +31,7 @@ public class PlayerHealth : MonoBehaviour
     public void TakeDamage(float damage)
     {
         CurrentHealth -= damage; // calls setter
+        Debug.Log("Player Damaged");
     }
 
     public void Heal(float amount)

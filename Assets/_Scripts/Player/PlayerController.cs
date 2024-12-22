@@ -51,6 +51,7 @@ public class PlayerController : MonoBehaviour
         if (ctx.performed && cc.isGrounded)
         {
             verticalVelocity = jumpForce;
+            Debug.Log("Player jumped");
         }
     }
 
@@ -71,12 +72,6 @@ public class PlayerController : MonoBehaviour
         float hSpeed = speed * Time.deltaTime;
         Vector3 horizontalMove = projectedMoveDirection * hSpeed;
 
-        //Check ground, handle vertical velocity
-        if (cc.isGrounded && verticalVelocity < 0f)
-        {
-            // If grounded and we were falling or at rest, reset velocity
-            verticalVelocity = 0f;
-        }
 
         // Apply gravity every frame
         verticalVelocity += gravity * Time.deltaTime;
