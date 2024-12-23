@@ -1,19 +1,22 @@
 using UnityEngine;
+using static PlayerController;
 
 public class WeaponPickup : MonoBehaviour
 {
-    public string weaponName;  // e.g. “Shotgun” or “LaserGun”
+    public WeaponType weaponType;
 
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            // If you have an inventory system, add the weapon to it
-            PlayerInventory inventory = other.GetComponent<PlayerInventory>();
-            if (inventory != null)
+            // The player picks up the weapon
+            var playerController = other.GetComponent<PlayerController>();
+            if (playerController != null)
             {
-                inventory.AddWeapon(weaponName);
+                playerController.EquipWeapon(weaponType);
             }
+
+            // Destroy the pickup
             Destroy(gameObject);
         }
     }

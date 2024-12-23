@@ -5,6 +5,9 @@ public class EnemyHealth : MonoBehaviour
 {
     public float maxHealth = 50f;
     private float currentHealth;
+    public Animator animator;
+    public GameObject dropItemPrefab; // assign in Inspector
+
 
     public UnityEvent<float, float> onHealthChanged;
 
@@ -21,12 +24,22 @@ public class EnemyHealth : MonoBehaviour
         if (currentHealth <= 0)
         {
             Die();
+            animator.SetBool("IsDead", true);
         }
     }
 
-    void Die()
+    public void Die()
     {
-        // Destroy enemy or disable it
+        // Possibly play a death animation first
+        // Or just do:
+
+        // Drop the item
+        if (dropItemPrefab != null)
+        {
+            Instantiate(dropItemPrefab, transform.position, Quaternion.identity);
+        }
+
+        // Destroy the enemy
         Destroy(gameObject);
     }
 }

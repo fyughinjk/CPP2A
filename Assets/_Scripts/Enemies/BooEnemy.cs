@@ -6,6 +6,8 @@ public class BooEnemy : MonoBehaviour
     public Transform player;          // Assign via inspector or find at runtime
     public GameObject projectilePrefab; // Projectile to shoot
     public Transform firePoint;       // Where the projectile is spawned
+    private bool canSeePlayer;
+
 
     [Header("Ranges")]
     public float visionRange = 15f;   // Distance at which Boo can see (detect) the player
@@ -22,6 +24,8 @@ public class BooEnemy : MonoBehaviour
 
     private bool isInvisible = false;
 
+    public Animator animator;
+
     void Start()
     {
         if (player == null)
@@ -35,9 +39,47 @@ public class BooEnemy : MonoBehaviour
 
     void Update()
     {
-        if (player == null) return;
-
         float distance = Vector3.Distance(transform.position, player.position);
+
+        if (distance <= visionRange)
+        {
+            // Now we do a Raycast to see if there's line of sight
+            CheckLineOfSight();
+        }
+        else
+        {
+            canSeePlayer = false;
+        }
+
+        if (canSeePlayer)
+        {
+            // If in range to chase or attack, do so
+            if (distance > attackRange)
+            {
+                // Chase
+                animator.SetFloat("Speed", chaseSpeed);
+                MoveTowardsPlayer();
+            }
+            else
+            {
+                // Attack
+                animator.SetFloat("Speed", 0f);
+                ShootProjectile();
+            }
+        }
+        else
+        {
+            // Not seeing the player => Idle
+            animator.SetFloat("Speed", 0f);
+            // or set a bool "isIdle" if you prefer
+        }
+
+        // if moving
+        animator.SetFloat("Speed", chaseSpeed);
+    // if dead
+    
+
+        if (player == null) return;
 
         // 1. Check if player is looking at Boo
         CheckPlayerLooking();
@@ -53,6 +95,27 @@ public class BooEnemy : MonoBehaviour
         {
             // Optional: idle/patrol/hover in place
         }
+    }
+
+    void CheckLineOfSight()
+    {
+        // Vector from enemy to player
+        Vector3 dirToPlayer = (player.position - transform.position).normalized;
+
+        // Start ray from enemy's "eye" position, or transform.position + Vector3.up * eyeHeight
+        Vector3 rayStart = transform.position + Vector3.up * 1.5f;
+
+        // Raycast
+        if (Physics.Raycast(rayStart, dirToPlayer, out RaycastHit hit, visionRange))
+        {
+            if (hit.collider.CompareTag("Player"))
+            {
+                // We have line of sight
+                canSeePlayer = true;
+                return;
+            }
+        }
+        canSeePlayer = false;
     }
 
     void CheckPlayerLooking()
@@ -136,6 +199,7 @@ public class BooEnemy : MonoBehaviour
             {
                 ShootProjectile();
                 shotTimer = timeBetweenShots;
+                animator.SetTrigger("Attack");
             }
         }
         else
@@ -152,7 +216,7 @@ public class BooEnemy : MonoBehaviour
         // Instantiate projectile
         GameObject proj = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         // If you have a Projectile script, you can set direction or velocity here
-        // e.g. proj.GetComponent<Projectile>().SetDirection((player.position - firePoint.position).normalized);
+        proj.GetComponent<Projectile>().SetDirection((player.position - firePoint.position).normalized);
         // in BooEnemy.ShootProjectile():
         var projComponent = proj.GetComponent<Projectile>();
         Vector3 dir = (player.position - firePoint.position).normalized;
