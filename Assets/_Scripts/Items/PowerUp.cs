@@ -2,7 +2,7 @@ using UnityEngine;
 
 public abstract class PowerUp : MonoBehaviour
 {
-    public float duration = 5f; // How long the effect lasts
+    public float duration = 5000f; // How long the effect lasts
 
     // This is what each child must implement
     public abstract void OnPickup(GameObject player);

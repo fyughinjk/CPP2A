@@ -44,6 +44,42 @@ public partial class @ProjectActions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Attack"",
+                    ""type"": ""Button"",
+                    ""id"": ""4abcc76c-a928-4705-ace8-376e5f0b79ad"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Hands"",
+                    ""type"": ""Button"",
+                    ""id"": ""32521b09-c395-4eeb-8e52-28165cbbab6c"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Sword"",
+                    ""type"": ""Button"",
+                    ""id"": ""dddd2679-a45b-4b8c-9fb0-757c92b26c78"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""EquipMagic"",
+                    ""type"": ""Button"",
+                    ""id"": ""3bb78bfa-24d4-46a2-aa79-454eb0a9a795"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -167,6 +203,50 @@ public partial class @ProjectActions: IInputActionCollection2, IDisposable
                     ""action"": ""Jump"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""946ded48-eb82-4085-9d39-ed4395e9f6b4"",
+                    ""path"": ""<Mouse>/leftButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Attack"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""60e7e598-ac69-4999-9c47-7df81e9f9dc7"",
+                    ""path"": ""<Keyboard>/1"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Hands"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""ecc6e638-08cb-4243-b9d6-817392c450cc"",
+                    ""path"": ""<Keyboard>/2"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Sword"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""e076f24a-803d-4b9d-b425-8c5476bafbf6"",
+                    ""path"": ""<Keyboard>/3"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""EquipMagic"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -177,6 +257,10 @@ public partial class @ProjectActions: IInputActionCollection2, IDisposable
         m_Movement = asset.FindActionMap("Movement", throwIfNotFound: true);
         m_Movement_Move = m_Movement.FindAction("Move", throwIfNotFound: true);
         m_Movement_Jump = m_Movement.FindAction("Jump", throwIfNotFound: true);
+        m_Movement_Attack = m_Movement.FindAction("Attack", throwIfNotFound: true);
+        m_Movement_Hands = m_Movement.FindAction("Hands", throwIfNotFound: true);
+        m_Movement_Sword = m_Movement.FindAction("Sword", throwIfNotFound: true);
+        m_Movement_EquipMagic = m_Movement.FindAction("EquipMagic", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -240,12 +324,20 @@ public partial class @ProjectActions: IInputActionCollection2, IDisposable
     private List<IMovementActions> m_MovementActionsCallbackInterfaces = new List<IMovementActions>();
     private readonly InputAction m_Movement_Move;
     private readonly InputAction m_Movement_Jump;
+    private readonly InputAction m_Movement_Attack;
+    private readonly InputAction m_Movement_Hands;
+    private readonly InputAction m_Movement_Sword;
+    private readonly InputAction m_Movement_EquipMagic;
     public struct MovementActions
     {
         private @ProjectActions m_Wrapper;
         public MovementActions(@ProjectActions wrapper) { m_Wrapper = wrapper; }
         public InputAction @Move => m_Wrapper.m_Movement_Move;
         public InputAction @Jump => m_Wrapper.m_Movement_Jump;
+        public InputAction @Attack => m_Wrapper.m_Movement_Attack;
+        public InputAction @Hands => m_Wrapper.m_Movement_Hands;
+        public InputAction @Sword => m_Wrapper.m_Movement_Sword;
+        public InputAction @EquipMagic => m_Wrapper.m_Movement_EquipMagic;
         public InputActionMap Get() { return m_Wrapper.m_Movement; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -261,6 +353,18 @@ public partial class @ProjectActions: IInputActionCollection2, IDisposable
             @Jump.started += instance.OnJump;
             @Jump.performed += instance.OnJump;
             @Jump.canceled += instance.OnJump;
+            @Attack.started += instance.OnAttack;
+            @Attack.performed += instance.OnAttack;
+            @Attack.canceled += instance.OnAttack;
+            @Hands.started += instance.OnHands;
+            @Hands.performed += instance.OnHands;
+            @Hands.canceled += instance.OnHands;
+            @Sword.started += instance.OnSword;
+            @Sword.performed += instance.OnSword;
+            @Sword.canceled += instance.OnSword;
+            @EquipMagic.started += instance.OnEquipMagic;
+            @EquipMagic.performed += instance.OnEquipMagic;
+            @EquipMagic.canceled += instance.OnEquipMagic;
         }
 
         private void UnregisterCallbacks(IMovementActions instance)
@@ -271,6 +375,18 @@ public partial class @ProjectActions: IInputActionCollection2, IDisposable
             @Jump.started -= instance.OnJump;
             @Jump.performed -= instance.OnJump;
             @Jump.canceled -= instance.OnJump;
+            @Attack.started -= instance.OnAttack;
+            @Attack.performed -= instance.OnAttack;
+            @Attack.canceled -= instance.OnAttack;
+            @Hands.started -= instance.OnHands;
+            @Hands.performed -= instance.OnHands;
+            @Hands.canceled -= instance.OnHands;
+            @Sword.started -= instance.OnSword;
+            @Sword.performed -= instance.OnSword;
+            @Sword.canceled -= instance.OnSword;
+            @EquipMagic.started -= instance.OnEquipMagic;
+            @EquipMagic.performed -= instance.OnEquipMagic;
+            @EquipMagic.canceled -= instance.OnEquipMagic;
         }
 
         public void RemoveCallbacks(IMovementActions instance)
@@ -292,5 +408,9 @@ public partial class @ProjectActions: IInputActionCollection2, IDisposable
     {
         void OnMove(InputAction.CallbackContext context);
         void OnJump(InputAction.CallbackContext context);
+        void OnAttack(InputAction.CallbackContext context);
+        void OnHands(InputAction.CallbackContext context);
+        void OnSword(InputAction.CallbackContext context);
+        void OnEquipMagic(InputAction.CallbackContext context);
     }
 }

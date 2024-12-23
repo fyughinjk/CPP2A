@@ -1,11 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
+    public Animator animator;
     private CharacterController cc;
+    [SerializeField] private bool isGrounded;
 
     [Header("Speeds")]
     [SerializeField] private float speed = 5f;
@@ -19,6 +22,9 @@ public class PlayerController : MonoBehaviour
     private float gravity;
     private float verticalVelocity;
     private Vector2 direction;  // read from input
+
+    public enum WeaponState { Unarmed = 0, Sword = 1, Magic = 2 };
+    public WeaponState currentWeaponState = WeaponState.Unarmed;
 
     private void Start()
     {
@@ -55,6 +61,63 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    public void OnAttack(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed)
+        {
+            Attack();
+        }
+    }
+
+    public void OnUnEquipWeapon(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed)
+        {
+            UnequipWeapon();
+        }
+    }
+
+    public void OnEquipSword(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed)
+        {
+            EquipSword();
+        }
+    }
+
+    public void OnEquipMagic(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed)
+        {
+            EquipMagic();
+        }
+    }
+
+    // Example function to change weapon states, e.g. if you pick up a sword:
+    public void EquipSword()
+    {
+        currentWeaponState = WeaponState.Sword;
+    }
+
+    // Or if you switch to magic:
+    public void EquipMagic()
+    {
+        currentWeaponState = WeaponState.Magic;
+    }
+
+    // Or if you go unarmed:
+    public void UnequipWeapon()
+    {
+        currentWeaponState = WeaponState.Unarmed;
+    }
+ public void Attack()
+    {
+        // 1. Set the WeaponType param so the Animator knows which attack anim to use
+        animator.SetInteger("WeaponType", (int)currentWeaponState);
+
+        // 2. Trigger the attack
+        animator.SetTrigger("AttackTrigger");
+    }
     private void Update()
     {
         //Camera relative
@@ -65,6 +128,9 @@ public class PlayerController : MonoBehaviour
         cameraForward.Normalize();
         cameraRight.Normalize();
 
+        isGrounded = cc.isGrounded;
+
+
         //Combine input with camera direction
         Vector3 projectedMoveDirection = cameraForward * direction.y + cameraRight * direction.x;
 
@@ -72,6 +138,11 @@ public class PlayerController : MonoBehaviour
         float hSpeed = speed * Time.deltaTime;
         Vector3 horizontalMove = projectedMoveDirection * hSpeed;
 
+        Vector3 input = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
+        float currentSpeed = input.magnitude * speed;
+
+        animator.SetBool("IsGrounded", isGrounded);
+        animator.SetFloat("Speed", currentSpeed);
 
         // Apply gravity every frame
         verticalVelocity += gravity * Time.deltaTime;
@@ -91,5 +162,7 @@ public class PlayerController : MonoBehaviour
                                                   Quaternion.LookRotation(projectedMoveDirection),
                                                   timeStep);
         }
+
+        
     }
 }
