@@ -1,52 +1,53 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 public class MeleeEnemy : MonoBehaviour
 {
     [Header("References")]
     public Transform player;
+    public NavMeshAgent agent;
+    public Animator animator;
 
     [Header("Stats")]
-    public float detectionRange = 10f;  // range at which it detects player
-    public float moveSpeed = 3f;
+    public float visionRange = 15f;
     public float attackRange = 1.5f;
     public float attackCooldown = 2f;   // seconds between melee attacks
+    private float attackTimer;
 
-    private float attackTimer = 0f;
+    // Whether we have clear line of sight to the player
+    private bool canSeePlayer = false;
 
-    private bool canSeePlayer;
-
-    public Animator animator;
+    [Header("Wander Settings")]
+    public float wanderRadius = 10f;
+    public float wanderInterval = 5f;   // How often to pick a new random wander point
+    private float wanderTimer;
 
     void Start()
     {
+        agent = GetComponent<NavMeshAgent>();
+        // If not assigned, find the player by tag
         if (player == null)
         {
             GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
             if (playerObj != null)
                 player = playerObj.transform;
         }
+
+        attackTimer = 0f;
+        wanderTimer = wanderInterval;
     }
 
     void Update()
     {
-        
+        // Safety check
         if (player == null) return;
 
+        // 1. Check distance
         float distance = Vector3.Distance(transform.position, player.position);
 
-        if (distance <= detectionRange)
+        // 2. Check line of sight if within vision range
+        if (distance <= visionRange)
         {
-            ChasePlayer(distance);
-        }
-        else
-        {
-            // Optionally idle/patrol
-        }
-        animator.SetFloat("Speed", moveSpeed);
-
-        if (distance <= detectionRange)
-        {
-            // Now we do a Raycast to see if there's line of sight
             CheckLineOfSight();
         }
         else
@@ -54,90 +55,92 @@ public class MeleeEnemy : MonoBehaviour
             canSeePlayer = false;
         }
 
+        // 3. Decide behavior: chase/attack OR wander/idle
         if (canSeePlayer)
         {
-            // If in range to chase or attack, do so
+            // If player in sight
             if (distance > attackRange)
             {
-                // Chase
-                animator.SetFloat("Speed", moveSpeed);
-                MoveTowardsPlayer();
+                // CHASE
+                agent.SetDestination(player.position);
+                // Optionally reduce the agent's stopping distance to attackRange
+                agent.stoppingDistance = attackRange - 0.1f;
+
+                // Animate run/walk
+                animator.SetFloat("Speed", agent.velocity.magnitude);
             }
             else
             {
-                // Attack
+                // ATTACK
+                agent.SetDestination(transform.position); // stop moving
                 animator.SetFloat("Speed", 0f);
-                Attack();
+
+                attackTimer -= Time.deltaTime;
+                if (attackTimer <= 0f)
+                {
+                    Attack();
+                    attackTimer = attackCooldown;
+                }
             }
         }
         else
         {
-            // Not seeing the player => Idle
-            animator.SetFloat("Speed", 0f);
-            // or set a bool "isIdle" if you prefer
+            // Not seeing the player => WANDER or IDLE
+            Wander();
         }
-
     }
 
     void CheckLineOfSight()
     {
-        // Vector from enemy to player
-        Vector3 dirToPlayer = (player.position - transform.position).normalized;
+        Vector3 eyePos = transform.position + Vector3.up * 1.5f;
+        Vector3 dirToPlayer = (player.position - eyePos).normalized;
 
-        // Start ray from enemy's "eye" position, or transform.position + Vector3.up * eyeHeight
-        Vector3 rayStart = transform.position + Vector3.up * 1.5f;
-
-        // Raycast
-        if (Physics.Raycast(rayStart, dirToPlayer, out RaycastHit hit, detectionRange))
+        if (Physics.Raycast(eyePos, dirToPlayer, out RaycastHit hit, visionRange))
         {
             if (hit.collider.CompareTag("Player"))
             {
-                // We have line of sight
                 canSeePlayer = true;
                 return;
             }
         }
         canSeePlayer = false;
     }
-    void MoveTowardsPlayer()
-    {
-        Vector3 dir = (player.position - transform.position).normalized;
-        transform.position += dir * moveSpeed * Time.deltaTime;
-        // Also rotate to face the player
-        transform.rotation = Quaternion.LookRotation(dir);
-    }
-
-    void ChasePlayer(float distance)
-    {
-        // If not in attack range, move closer
-        if (distance > attackRange)
-        {
-            Vector3 dir = (player.position - transform.position).normalized;
-            transform.position += dir * moveSpeed * Time.deltaTime;
-            transform.rotation = Quaternion.LookRotation(dir);
-            
-        }
-        else
-        {
-            // Attack if cooldown is ready
-            attackTimer -= Time.deltaTime;
-            moveSpeed = 0;
-            if (attackTimer <= 0f)
-            {
-                // Attack logic
-                Attack();
-                attackTimer = attackCooldown;
-            }
-        }
-    }
 
     void Attack()
     {
-        // Example: just log or call an animation event
-        Debug.Log("MeleeEnemy attacks the player!");
-        // If you want to do damage:
-        // Check if still in range, then call:
-        player.GetComponent<PlayerHealth>()?.TakeDamage(10);
+        // Trigger the attack animation
         animator.SetTrigger("Attack");
+
+        // Optionally do damage immediately or via an animation event
+        Debug.Log("MeleeEnemy attacks the player!");
+        player.GetComponent<PlayerHealth>()?.TakeDamage(10);
+    }
+
+    // Random wander logic
+    void Wander()
+    {
+        wanderTimer -= Time.deltaTime;
+        if (wanderTimer <= 0f)
+        {
+            // pick a random point on the NavMesh around current position
+            Vector3 newPos = GetRandomPointOnNavMesh(transform.position, wanderRadius);
+            agent.SetDestination(newPos);
+
+            wanderTimer = wanderInterval;
+        }
+
+        // Animate wander movement
+        animator.SetFloat("Speed", agent.velocity.magnitude);
+    }
+
+    // Helper to get a valid random NavMesh position near origin
+    Vector3 GetRandomPointOnNavMesh(Vector3 origin, float radius)
+    {
+        Vector3 randomDir = Random.insideUnitSphere * radius;
+        randomDir += origin;
+
+        NavMeshHit navHit;
+        NavMesh.SamplePosition(randomDir, out navHit, radius, NavMesh.AllAreas);
+        return navHit.position;
     }
 }

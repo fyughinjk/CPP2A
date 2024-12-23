@@ -46,15 +46,20 @@ public class InputManager : Singleton<InputManager>
 
     }
 
-    // Start is called before the first frame update
-    void Start()
+    public void PauseGame()
     {
-        
+        // Pause
+        Time.timeScale = 0f;
+
+        // Disable the entire input action map so no input events fire
+        inputs.Disable();
+        // or inputs.Disable();
     }
 
-    // Update is called once per frame
-    void Update()
+    public void ResumeGame()
     {
-        
+        Time.timeScale = 1f;
+        inputs.Enable();
     }
+
 }

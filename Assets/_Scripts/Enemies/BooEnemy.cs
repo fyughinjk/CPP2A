@@ -1,116 +1,124 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 public class BooEnemy : MonoBehaviour
 {
     [Header("References")]
-    public Transform player;          // Assign via inspector or find at runtime
-    public GameObject projectilePrefab; // Projectile to shoot
-    public Transform firePoint;       // Where the projectile is spawned
-    private bool canSeePlayer;
+    public NavMeshAgent agent;
+    public Transform player;
+    public GameObject projectilePrefab;
+    public Transform firePoint;
 
+    [Header("Wander Settings")]
+    public float wanderRadius = 10f;
+    public float wanderTimer = 5f;
+    private float wanderTimerCounter;
 
     [Header("Ranges")]
-    public float visionRange = 15f;   // Distance at which Boo can see (detect) the player
-    public float attackRange = 10f;   // Distance at which Boo starts shooting
-    public float chaseSpeed = 3f;     // Speed while moving to keep distance
-    public float minDistance = 8f;    // The distance Boo wants to maintain from player
+    public float visionRange = 15f;    // how far Boo can detect the player
+    public float attackRange = 10f;    // when Boo can shoot
+    public float chaseSpeed = 3f;      // NavMeshAgent speed
+    public float minDistance = 8f;     // if the player is closer than this, Boo moves away
 
     [Header("Attack Settings")]
-    public float timeBetweenShots = 2f;   // Delay between shots
-    private float shotTimer = 0f;
+    public float timeBetweenShots = 2f; // cooldown between shots
+    private float shotTimer;
 
     [Header("Visibility")]
-    public float playerLookThreshold = 45f; // Angle within which Boo is being “looked at”
+    public float playerLookThreshold = 45f; // angle within which Boo is being looked at
+    private bool isInvisible = false;        // if Boo is invisible (i.e. being looked at)
+    public bool freezeWhenLookedAt = false;  // if true, Boo will freeze when invisible
 
-    private bool isInvisible = false;
-
+    [Header("Animations")]
     public Animator animator;
+
+    // Internal states
+    private bool canSeePlayer = false;
 
     void Start()
     {
+        // If you didn't assign player in the Inspector, find them by tag
         if (player == null)
         {
-            // If not assigned in the Inspector, try to find it by tag
             GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
             if (playerObj != null)
                 player = playerObj.transform;
         }
+
+        // Get the NavMeshAgent if not already assigned
+        agent = GetComponent<NavMeshAgent>();
+        if (agent)
+        {
+            agent.speed = chaseSpeed; // set base speed
+        }
+
+        wanderTimerCounter = wanderTimer;
+        shotTimer = 0f;
     }
 
     void Update()
     {
+        if (!player) return;
+
         float distance = Vector3.Distance(transform.position, player.position);
 
+        // 1. Check line of sight if within vision range
         if (distance <= visionRange)
-        {
-            // Now we do a Raycast to see if there's line of sight
             CheckLineOfSight();
-        }
         else
-        {
             canSeePlayer = false;
-        }
 
-        if (canSeePlayer)
-        {
-            // If in range to chase or attack, do so
-            if (distance > attackRange)
-            {
-                // Chase
-                animator.SetFloat("Speed", chaseSpeed);
-                MoveTowardsPlayer();
-            }
-            else
-            {
-                // Attack
-                animator.SetFloat("Speed", 0f);
-                ShootProjectile();
-            }
-        }
-        else
-        {
-            // Not seeing the player => Idle
-            animator.SetFloat("Speed", 0f);
-            // or set a bool "isIdle" if you prefer
-        }
-
-        // if moving
-        animator.SetFloat("Speed", chaseSpeed);
-    // if dead
-    
-
-        if (player == null) return;
-
-        // 1. Check if player is looking at Boo
+        // 2. Check if the player is looking at Boo -> toggles Boo’s visibility
         CheckPlayerLooking();
 
-        // 2. Check if within vision range
-        if (distance <= visionRange)
+        // 3. If Boo is invisible (meaning the player is looking) AND freezeWhenLookedAt = true,
+        //    Boo won't move. We stop the agent and skip further logic.
+        if (isInvisible && freezeWhenLookedAt)
         {
-            // Within Boo’s detection
-            HandleMovement(distance);
-            HandleAttack(distance);
+            agent.SetDestination(transform.position);
+            UpdateAnimatorSpeed();  // sets animator speed = agent.velocity.magnitude (should be 0)
+            return;
+        }
+
+        // 4. If Boo can see the player (line of sight) -> chase or attack
+        if (canSeePlayer)
+        {
+            // If the player is too close (distance < minDistance), move away
+            if (distance < minDistance)
+            {
+                MoveAwayFromPlayer();
+            }
+            // Otherwise, if the player is out of attack range -> chase
+            else if (distance > attackRange)
+            {
+                agent.SetDestination(player.position);
+            }
+            // Else, distance <= attackRange -> handle attack
+            else
+            {
+                agent.SetDestination(transform.position); // stop moving to shoot
+                HandleAttack(distance);
+            }
+
+            UpdateAnimatorSpeed(); // update animator based on actual agent velocity
         }
         else
         {
-            // Optional: idle/patrol/hover in place
+            // 5. If we do NOT see the player, wander around
+            HandleWander();
         }
     }
 
+    // Checks if there's a direct line-of-sight to the player
     void CheckLineOfSight()
     {
-        // Vector from enemy to player
-        Vector3 dirToPlayer = (player.position - transform.position).normalized;
-
-        // Start ray from enemy's "eye" position, or transform.position + Vector3.up * eyeHeight
         Vector3 rayStart = transform.position + Vector3.up * 1.5f;
+        Vector3 dirToPlayer = (player.position - rayStart).normalized;
 
-        // Raycast
         if (Physics.Raycast(rayStart, dirToPlayer, out RaycastHit hit, visionRange))
         {
             if (hit.collider.CompareTag("Player"))
             {
-                // We have line of sight
                 canSeePlayer = true;
                 return;
             }
@@ -118,109 +126,104 @@ public class BooEnemy : MonoBehaviour
         canSeePlayer = false;
     }
 
+    // Picks a random point on the NavMesh around 'transform.position' within wanderRadius
+    void HandleWander()
+    {
+        wanderTimerCounter += Time.deltaTime;
+        if (wanderTimerCounter >= wanderTimer)
+        {
+            Vector3 newPos = RandomNavSphere(transform.position, wanderRadius);
+            agent.SetDestination(newPos);
+            wanderTimerCounter = 0f;
+        }
+        UpdateAnimatorSpeed();
+    }
+
+    // If the player is looking at Boo, Boo becomes invisible
     void CheckPlayerLooking()
     {
-        // 1) Vector from player to Boo
         Vector3 dirToBoo = (transform.position - player.position).normalized;
-
-        // 2) Player’s forward direction
         Vector3 playerForward = player.forward;
-        // If your player has a camera, you might use the camera’s forward instead:
-        // Vector3 playerForward = Camera.main.transform.forward;
-
-        // 3) Compute angle
         float angle = Vector3.Angle(playerForward, dirToBoo);
 
-        // If angle < threshold, the player is looking at Boo
         bool playerIsLooking = angle < playerLookThreshold;
-
-        // Boo is invisible if player is looking, visible otherwise
+        // Boo is invisible if the player is looking
         SetVisibility(!playerIsLooking);
     }
 
+    // Sets Boo's renderer(s) to visible or invisible
     void SetVisibility(bool visible)
     {
-        if (isInvisible == !visible) return; // no change needed
+        // If isInvisible is already set, skip
+        if (isInvisible == !visible) return;
 
         isInvisible = !visible;
-        // Option 1: Toggle the renderer
         Renderer[] renderers = GetComponentsInChildren<Renderer>();
         foreach (Renderer rend in renderers)
         {
             rend.enabled = visible;
         }
-
-        // Option 2 (alternative): set alpha / or a special shader if you prefer
-        // ...
     }
 
-    void HandleMovement(float distance)
-    {
-        // Boo only moves if the player is within vision but outside the minDistance
-        // so Boo tries to get within attack range but not too close. 
-        // This is up to your design preference:
-
-        // If Boo is outside minDistance, move closer
-        if (distance > minDistance)
-        {
-            MoveTowardsPlayer();
-        }
-        // If Boo is too close, move away
-        else if (distance < (minDistance - 1f))
-        {
-            MoveAwayFromPlayer();
-        }
-
-        // Otherwise, if Boo is in the sweet spot, don’t move
-    }
-
-    void MoveTowardsPlayer()
-    {
-        Vector3 dir = (player.position - transform.position).normalized;
-        transform.position += dir * chaseSpeed * Time.deltaTime;
-        // Also rotate to face the player
-        transform.rotation = Quaternion.LookRotation(dir);
-    }
-
-    void MoveAwayFromPlayer()
-    {
-        Vector3 dir = (transform.position - player.position).normalized;
-        transform.position += dir * chaseSpeed * Time.deltaTime;
-        transform.rotation = Quaternion.LookRotation((player.position - transform.position).normalized);
-    }
-
+    // If within attack range, Boo tries to shoot the player
     void HandleAttack(float distance)
     {
-        // If within attack range, shoot projectiles (if not invisible)
-        if (distance <= attackRange && !isInvisible)
+        // If Boo is invisible, skip attacking
+        if (isInvisible) return;
+
+        shotTimer -= Time.deltaTime;
+        if (shotTimer <= 0f)
         {
-            shotTimer -= Time.deltaTime;
-            if (shotTimer <= 0f)
-            {
-                ShootProjectile();
-                shotTimer = timeBetweenShots;
-                animator.SetTrigger("Attack");
-            }
+            ShootProjectile();
+            shotTimer = timeBetweenShots;
+            animator.SetTrigger("Attack");
         }
         else
         {
-            // Reset timer or just let it tick
-            shotTimer = Mathf.Max(shotTimer, 0f);
+            // Just idle or aim, no shooting right now
         }
     }
 
+    // Spawns a projectile from 'firePoint' aimed at the player
     void ShootProjectile()
     {
         if (projectilePrefab == null || firePoint == null) return;
 
-        // Instantiate projectile
         GameObject proj = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
-        // If you have a Projectile script, you can set direction or velocity here
-        proj.GetComponent<Projectile>().SetDirection((player.position - firePoint.position).normalized);
-        // in BooEnemy.ShootProjectile():
-        var projComponent = proj.GetComponent<Projectile>();
-        Vector3 dir = (player.position - firePoint.position).normalized;
-        projComponent.SetDirection(dir);
 
+        // If your Projectile script has a 'SetDirection' method:
+        Vector3 dir = (player.position - firePoint.position).normalized;
+        var projScript = proj.GetComponent<Projectile>();
+        if (projScript)
+        {
+            projScript.SetDirection(dir);
+        }
+    }
+
+    // Moves Boo away from the player if the player is too close
+    void MoveAwayFromPlayer()
+    {
+        Vector3 awayDir = (transform.position - player.position).normalized;
+        Vector3 newPos = transform.position + awayDir * 5f; // pick some distance to back up
+        agent.SetDestination(newPos);
+    }
+
+    // Random point on NavMesh in given radius
+    public static Vector3 RandomNavSphere(Vector3 origin, float dist)
+    {
+        Vector3 randomDir = Random.insideUnitSphere * dist + origin;
+        NavMeshHit navHit;
+        NavMesh.SamplePosition(randomDir, out navHit, dist, NavMesh.AllAreas);
+        return navHit.position;
+    }
+
+    // Updates animator "Speed" parameter based on agent velocity
+    void UpdateAnimatorSpeed()
+    {
+        if (agent != null && animator != null)
+        {
+            float actualSpeed = agent.velocity.magnitude;
+            animator.SetFloat("Speed", actualSpeed);
+        }
     }
 }

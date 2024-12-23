@@ -11,39 +11,47 @@ public class PlayerHealth : MonoBehaviour
     public UnityEvent<float, float> onHealthChanged;
     // or you can do a direct reference to your UI
 
-    private void Awake()
+
+
+    void Awake()
     {
         currentHealth = maxHealth;
     }
 
-    public float CurrentHealth
+    public float GetCurrentHealth()
     {
-        get { return currentHealth; }
-        private set
-        {
-            currentHealth = Mathf.Clamp(value, 0, maxHealth);
-            onHealthChanged?.Invoke(currentHealth, maxHealth);
-
-            if (currentHealth <= 0)
-            {
-                Die();
-            }
-        }
+        return currentHealth;
     }
 
-    public void TakeDamage(float damage)
+    public void TakeDamage(float amount)
     {
-        CurrentHealth -= damage;
+        SetCurrentHealth(currentHealth - amount);
     }
 
     public void Heal(float amount)
     {
-        CurrentHealth += amount;
+        SetCurrentHealth(currentHealth + amount);
+    }
+
+    // Here’s the method you asked about
+    public void SetCurrentHealth(float value)
+    {
+        currentHealth = Mathf.Clamp(value, 0f, maxHealth);
+
+        // If you have a health bar or UI, fire an event so it updates
+        onHealthChanged?.Invoke(currentHealth, maxHealth);
+
+        // Check if we died
+        if (currentHealth <= 0)
+        {
+            Die();
+        }
     }
 
     private void Die()
     {
         Debug.Log("Player died!");
-        // handle death logic
+        // Possibly call GameManager.Instance.PlayerDied();
+        // or onPlayerDeath event
     }
 }

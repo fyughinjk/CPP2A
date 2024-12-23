@@ -1,23 +1,25 @@
 using UnityEngine;
-using static PlayerController;
 
 public class WeaponPickup : MonoBehaviour
 {
-    public WeaponType weaponType;
+    public enum PickupType { Sword, Magic }
+    public PickupType pickupType;
 
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            // The player picks up the weapon
-            var playerController = other.GetComponent<PlayerController>();
-            if (playerController != null)
+            PlayerController pc = other.GetComponent<PlayerController>();
+            if (pc != null)
             {
-                playerController.EquipWeapon(weaponType);
-            }
+                if (pickupType == PickupType.Sword)
+                    pc.UnlockSword();
+                else if (pickupType == PickupType.Magic)
+                    pc.UnlockMagic();
 
-            // Destroy the pickup
-            Destroy(gameObject);
+                // destroy pickup
+                Destroy(gameObject);
+            }
         }
     }
 }
